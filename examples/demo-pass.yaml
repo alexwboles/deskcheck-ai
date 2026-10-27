@@ -1,0 +1,26 @@
+# Passing MockDriver demo: launch, act, screenshot, assert.
+# Run: deskcheck run examples/demo-pass.yaml --config examples/config.yaml \
+#        --driver mock --mock-windows demo-app
+version: 1
+name: demo-pass
+app: demo-app
+steps:
+  - type: launch
+    app: demo-app
+  - type: wait
+    ms: 10
+  - type: click
+    x: 100
+    y: 200
+  - type: type
+    text: "hello"
+  - type: key
+    key: Enter
+  - type: screenshot
+    name: main
+  - type: assert
+    kind: window-visible
+    window: demo-app
+  - type: assert
+    kind: screenshot-saved
+    screenshot: main

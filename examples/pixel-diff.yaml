@@ -1,0 +1,20 @@
+# Pixel-diff demo. First run (no baseline yet) fails with a clear
+# "baseline missing" message. Accept it, then re-run to pass:
+#   deskcheck run examples/pixel-diff.yaml --config examples/config.yaml \
+#     --driver mock --mock-windows demo-app --update-baselines
+#   deskcheck run examples/pixel-diff.yaml --config examples/config.yaml \
+#     --driver mock --mock-windows demo-app
+version: 1
+name: pixel-diff-demo
+app: demo-app
+steps:
+  - type: launch
+    app: demo-app
+  - type: screenshot
+    name: main
+  - type: assert
+    kind: pixel-diff
+    screenshot: main
+    baseline: main.png
+    tolerance: 0.0
+    max_diff_ratio: 0.01

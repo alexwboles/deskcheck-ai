@@ -1,0 +1,15 @@
+# deskcheck allowlist config. Default deny: anything not listed here
+# is refused at launch AND at every input step.
+apps:
+  demo-app:
+    command: demo-app
+    category: app
+  # A browser is ONLY allowed with a fresh throwaway profile:
+  #   throwaway-browser:
+  #     command: chromium --user-data-dir=/tmp/deskcheck-profile
+  #     category: browser
+  #     throwaway_profile: true
+  # These categories are denied even if listed (see docs/SECURITY.md):
+  #   secret-vault: {category: password-manager}
+  #   keychain:     {category: credential-store}
+  #   settings:     {category: system-settings}

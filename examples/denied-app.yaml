@@ -1,0 +1,10 @@
+# Negative test: this app is NOT on the allowlist, so the run must
+# fail with a clear permission error (default deny) and log the denial.
+version: 1
+name: denied-app
+app: secret-vault
+steps:
+  - type: launch
+    app: secret-vault
+  - type: screenshot
+    name: should-never-happen

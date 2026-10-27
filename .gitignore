@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+runs/
+deskcheck-mcp-output/
+baselines/

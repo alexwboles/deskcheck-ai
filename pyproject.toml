@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "deskcheck-ai"
+version = "0.1.0"
+description = "Free, deterministic desktop-test loop for open coding agents"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.10"
+dependencies = ["PyYAML>=6"]
+
+[project.scripts]
+deskcheck = "deskcheck.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["deskcheck*"]
