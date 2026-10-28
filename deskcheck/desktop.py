@@ -204,7 +204,7 @@ class Desktop:
                     if message[0] == "done":
                         result = message[1]
                         self.report = Path(result.out_dir)/"report.html"
-                        self.status.set(f"{result.status.upper()} — {result.steps_run} logged actions. View the report for evidence.")
+                        self.status.set(f"{result.status.upper()} · {result.driver.upper()}{' SIMULATION' if result.driver == 'mock' else ''} — {result.steps_run} logged actions. View the report for evidence.")
                         self.append(self.status.get())
                         for failure in result.failures:
                             self.append(failure)

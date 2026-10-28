@@ -17,9 +17,10 @@ from .safety import atomic_bytes, contained, checked_root
 
 
 class RunResult:
-    def __init__(self, name, status, steps_run, failures, out_dir):
+    def __init__(self, name, status, steps_run, failures, out_dir, driver=None):
         self.name, self.status, self.steps_run = name, status, steps_run
         self.failures, self.out_dir = failures, str(out_dir)
+        self.driver = driver
 
     @property
     def passed(self):
@@ -187,18 +188,19 @@ def run_test(test_path, config, driver, out_dir, update_baselines=False,
     finally:
         if old_handler is not None:
             signal.signal(signal.SIGINT, old_handler)
-        _write_reports(test, entries, failures, status, out, shots)
-    return RunResult(test["name"], status, len(entries), failures, out)
+        _write_reports(test, entries, failures, status, out, shots, driver.name)
+    return RunResult(test["name"], status, len(entries), failures, out, driver.name)
 
 
-def _write_reports(test, entries, failures, status, out, shots):
+def _write_reports(test, entries, failures, status, out, shots, backend):
     badge = status.upper()
-    summary = {"name": test["name"], "app": test["app"], "status": status,
+    mode = "MOCK SIMULATION — no real app tested" if backend == "mock" else "Windows standard-control app"
+    summary = {"name": test["name"], "app": test["app"], "status": status, "driver":backend,
                "steps_run": len(entries), "failures": failures,
                "screenshots": {k: v.relative_to(out).as_posix() for k, v in shots.items()}}
     atomic_bytes(contained(out, "result.json"), json.dumps(summary, indent=2).encode())
     lines = [f"# deskcheck report: {test['name']}", "", f"Result: {badge}",
-             f"App: {test['app']}", "", "## Failures"]
+             f"App: {test['app']}", f"Backend: {backend} — {mode}", "", "## Failures"]
     lines += failures or ["None"]
     lines += ["", "## Steps"] + [f"{e['step']}: {e['type']} - {e['outcome']} - {e['target']}" for e in entries]
     atomic_bytes(contained(out, "report.md"), ("\n".join(lines) + "\n").encode())
@@ -211,7 +213,7 @@ def _write_reports(test, entries, failures, status, out, shots):
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; base-uri 'none'">
 <title>DeskCheck — {esc(test['name'])}</title>
 <style>body{{font:16px system-ui;max-width:1050px;margin:40px auto;padding:0 20px;background:#f5f7fa;color:#172b36}}header,section{{background:white;padding:24px;margin-bottom:20px;border:1px solid #d8e1e7}}h1{{margin:0 0 12px}}.badge{{font-weight:700;color:{'#127349' if status == 'pass' else '#a52432'}}}table{{width:100%;border-collapse:collapse}}td,th{{text-align:left;padding:12px;border-bottom:1px solid #ddd;overflow-wrap:anywhere}}.table{{overflow:auto}}img{{max-width:100%;height:auto;border:1px solid #ddd}}button,input{{border-radius:0}}figure{{margin:20px 0}}</style>
-<header><h1>{esc(test['name'])}</h1><span class="badge">{badge}</span> · {esc(test['app'])} · {len(entries)} logged actions<p>Typed content is redacted. Screenshots may contain app data; review before sharing.</p></header>
+<header><h1>{esc(test['name'])}</h1><span class="badge">{badge}</span> · {esc(test['app'])} · {len(entries)} logged actions<p><strong>{esc(mode)}</strong> · Backend: {esc(backend)}</p><p>Typed content is redacted. Screenshots may contain app data; review before sharing.</p></header>
 <section><h2>Failures</h2><ul>{failure_html or '<li>None</li>'}</ul></section>
 <section><h2>Actions</h2><div class="table"><table><tr><th>#</th><th>Action</th><th>Target</th><th>Outcome</th></tr>{rows}</table></div></section>
 <section><h2>Screenshots</h2>{images or '<p>No screenshots captured.</p>'}</section></html>'''

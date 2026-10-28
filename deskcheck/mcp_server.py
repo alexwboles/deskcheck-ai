@@ -116,7 +116,7 @@ class MCPServer:
                         update_baselines=args.get("update_baselines",False))
                 finally:
                     driver.close()
-                payload = json.dumps({"status":result.status,"name":result.name,
+                payload = json.dumps({"status":result.status,"name":result.name,"driver":result.driver,
                     "failures":result.failures,"report":str(Path(result.out_dir)/"report.html")})
                 return (self._ok if result.passed else self._err)(payload)
             return self._err("Unknown tool")

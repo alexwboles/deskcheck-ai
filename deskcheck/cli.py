@@ -87,7 +87,7 @@ def main(argv=None) -> int:
         return 2
     finally:
         driver.close()
-    print(f"deskcheck: {result.status} ({result.name}) — "
+    print(f"deskcheck: {result.status} ({result.name}) [driver={result.driver}{'; SIMULATED - no real app tested' if result.driver == 'mock' else ''}] — "
           f"report: {os.path.join(out_dir, 'report.md')}")
     for failure in result.failures:
         print(f"deskcheck: {failure}", file=sys.stderr)

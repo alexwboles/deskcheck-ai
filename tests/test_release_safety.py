@@ -42,6 +42,12 @@ class TestReleaseSafety(unittest.TestCase):
         with self.assertRaises(DeskcheckError):
             get_driver("auto")
 
+    def test_mock_reports_cannot_be_mistaken_for_native_evidence(self):
+        result,out = self.run_case("  - {type: launch, app: demo-app}\n")
+        self.assertEqual(result.driver,"mock")
+        self.assertEqual(json.loads((out/"result.json").read_text())["driver"],"mock")
+        self.assertIn("MOCK SIMULATION",(out/"report.html").read_text(encoding="utf-8"))
+
     def test_reject_duplicate_yaml_keys_and_aliases(self):
         for text in ("apps: {}\napps: {}", "a: &ref [1]\nb: *ref", "a: &ref [*ref]"):
             with self.subTest(text=text),self.assertRaises(ParseError):

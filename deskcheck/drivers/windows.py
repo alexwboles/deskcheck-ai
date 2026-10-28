@@ -224,6 +224,8 @@ class WindowsDriver(Driver):
         target = self._owned(self._input_hwnd or self._hwnd)
         cls = C.create_unicode_buffer(256)
         self.u.GetClassNameW(target,cls,256)
+        if "edit" in cls.value.lower() and self.u.GetWindowLongW(target,-16) & 0x20:
+            raise PermissionDenied("Password edit controls are not supported")
         if key == "Tab":
             next_control = self.u.GetNextDlgTabItem(self._hwnd,target,False)
             self._input_hwnd = self._owned(next_control)
