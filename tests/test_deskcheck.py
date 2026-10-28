@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -166,7 +167,7 @@ class TestAssertions(unittest.TestCase):
 
     def test_png_roundtrip(self):
         path = self._png("x.png", (1, 2, 3))
-        w, h, rows = decode_png(open(path, "rb").read())
+        w, h, rows = decode_png(Path(path).read_bytes())
         self.assertEqual((w, h), (4, 4))
         self.assertEqual(rows[0][0][:3], (1, 2, 3))
 
@@ -187,8 +188,7 @@ class TestRunnerE2E(unittest.TestCase):
         self.assertEqual(result.status, "pass")
         self.assertTrue(os.path.isfile(os.path.join(out, "report.md")))
         self.assertTrue(os.path.isfile(os.path.join(out, "report.html")))
-        entries = [json.loads(l) for l in
-                   open(os.path.join(out, "actions.jsonl"))]
+        entries = [json.loads(l) for l in Path(out,"actions.jsonl").read_text().splitlines()]
         self.assertEqual(len(entries), 4)
         self.assertTrue(all("timestamp" in e and "outcome" in e for e in entries))
         self.assertTrue(os.path.isfile(
@@ -199,7 +199,7 @@ class TestRunnerE2E(unittest.TestCase):
             "version: 1\nname: denied\napp: vault\n"
             "steps:\n  - {type: launch, app: vault}\n")
         self.assertEqual(result.status, "fail")
-        log = open(os.path.join(out, "actions.jsonl")).read()
+        log = Path(out,"actions.jsonl").read_text()
         self.assertIn("denied", log)
 
     def test_tampered_baseline_fails(self):
@@ -242,7 +242,7 @@ class TestRunnerE2E(unittest.TestCase):
 
     def test_html_no_rounded_no_gradient(self):
         result, out = self._run(DEMO)
-        page = open(os.path.join(out, "report.html")).read()
+        page = Path(out,"report.html").read_text(encoding="utf-8")
         self.assertNotIn("linear-gradient", page)
         self.assertNotIn("border-radius:8", page)
         self.assertIn("border-radius:0", page)

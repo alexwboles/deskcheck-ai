@@ -11,6 +11,7 @@ from __future__ import annotations
 import yaml
 
 from .errors import ParseError
+from .safety import load_yaml, safe_name, literal_text, named_key
 
 TOP_KEYS = {"version", "name", "app", "steps"}
 REQUIRED_TOP = {"version", "name", "app", "steps"}
@@ -60,7 +61,7 @@ def _check_str(value, field, where):
 
 def parse_test(text: str, source: str = "<test>") -> dict:
     try:
-        data = yaml.safe_load(text)
+        data = load_yaml(text)
     except yaml.YAMLError as exc:
         raise ParseError(f"{source}: invalid YAML: {exc}") from exc
     if not isinstance(data, dict):
@@ -74,13 +75,15 @@ def parse_test(text: str, source: str = "<test>") -> dict:
     missing = REQUIRED_TOP - set(data)
     if missing:
         raise ParseError(f"{source}: missing top-level key(s): {sorted(missing)}")
-    if data["version"] not in (1, "1", "1.0"):
+    if isinstance(data["version"], bool) or data["version"] not in (1, "1", "1.0"):
         raise ParseError(f"{source}: unsupported version {data['version']!r} (expected 1)")
-    _check_str(data["name"], "name", source)
-    _check_str(data["app"], "app", source)
+    safe_name(data["name"])
+    safe_name(data["app"])
     steps = data["steps"]
     if not isinstance(steps, list):
         raise ParseError(f"{source}: 'steps' must be a list")
+    if not steps or len(steps) > 1000:
+        raise ParseError("A test must contain 1-1000 steps")
     parsed = []
     for i, raw in enumerate(steps):
         where = f"{source} step {i}"
@@ -89,7 +92,7 @@ def parse_test(text: str, source: str = "<test>") -> dict:
                              f"{type(raw).__name__}")
         _reject_forbidden(raw, where)
         stype = raw.get("type")
-        if stype not in STEP_SPECS:
+        if not isinstance(stype, str) or stype not in STEP_SPECS:
             raise ParseError(
                 f"{where}: unknown step type {stype!r} "
                 f"(allowed: {sorted(STEP_SPECS)}). There is no shell/exec step.")
@@ -103,7 +106,7 @@ def parse_test(text: str, source: str = "<test>") -> dict:
             raise ParseError(f"{where} ({stype}): missing key(s): {sorted(missing_keys)}")
         step = {"type": stype}
         if stype == "launch":
-            step["app"] = _check_str(raw["app"], "app", where)
+            step["app"] = safe_name(raw["app"])
         elif stype == "wait":
             if "ms" not in raw and "window" not in raw:
                 raise ParseError(f"{where} (wait): need 'ms' and/or 'window'")
@@ -123,14 +126,14 @@ def parse_test(text: str, source: str = "<test>") -> dict:
         elif stype == "type":
             if not isinstance(raw["text"], str):
                 raise ParseError(f"{where} (type): 'text' must be a string")
-            step["text"] = raw["text"]
+            step["text"] = literal_text(raw["text"])
         elif stype == "key":
-            step["key"] = _check_str(raw["key"], "key", where)
+            step["key"] = named_key(raw["key"])
         elif stype == "screenshot":
-            step["name"] = _check_str(raw["name"], "name", where)
+            step["name"] = safe_name(raw["name"])
         elif stype == "assert":
             kind = raw["kind"]
-            if kind not in ASSERT_KINDS:
+            if not isinstance(kind, str) or kind not in ASSERT_KINDS:
                 raise ParseError(f"{where} (assert): unknown kind {kind!r} "
                                  f"(allowed: {sorted(ASSERT_KINDS)})")
             step["kind"] = kind
@@ -161,4 +164,4 @@ def parse_test(text: str, source: str = "<test>") -> dict:
 
 def load_test(path: str) -> dict:
     with open(path, "r", encoding="utf-8") as fh:
-        return parse_test(fh.read(), source=path)
+        return parse_test(fh.read(1024 * 1024 + 1), source=path)

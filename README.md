@@ -1,153 +1,149 @@
-# deskcheck-ai
+# DeskCheck
 
-A free, open-source (MIT), deterministic desktop-test loop for open coding
-agents. A coding agent (OpenCode, Codex CLI, Claude Code, etc.) calls
-deskcheck to verify its own GUI/desktop work: launch a named app, perform
-scripted GUI steps, screenshot, get pass/fail back into its build-fix loop.
+An offline test runner for repeatable **Windows standard-control app tests**
+and cross-platform **simulated tests**. Use its desktop interface, CLI or MCP
+server to run YAML steps and inspect HTML reports, screenshots and pixel diffs.
+There is no AI model, subscription, telemetry or paid API dependency.
 
-It is a **test harness, not another agent brain**. It decides nothing about
-what to do — it runs exactly the steps in a YAML test file and reports
-whether they passed.
+Version 0.2.0 is being verified on the `qa/input-target-guard` review branch.
+See [release status](docs/RELEASE-STATUS.md) for evidence and remaining gates.
+Do not confuse a mock pass with testing a real application.
 
-> **QA review branch — not a production security boundary.** The mock test
-> loop is verified with synthetic data. Windows/Linux input steps now fail
-> closed: these drivers do not yet bind input to a verified process/window
-> or contain global clicks. This deliberately disables native click/type/key
-> through the runner and MCP server instead of trusting the last launch name.
-> Native launch and full-desktop screenshot operations still exist; screenshots
-> can include other apps. Do not use this branch on a sensitive desktop or
-> advertise it as safe native desktop automation. See `docs/QA-2026-10-28.md`.
+## Start without Python — Windows portable package
 
-## Why this exists
+1. Extract the **entire** provided DeskCheck ZIP into a writable folder.
+2. Double-click **DeskCheck Desktop.exe**. Keep `DeskCheck.exe` and `_internal`
+   beside it; no administrator installation or registry changes are required.
+3. Click **Load sample**, then **Run test** for an offline simulated demo.
+4. Click **View report** to inspect the result and screenshot.
+5. Try **Windows sample** to test the bundled disposable standard-control app.
+   The runner asks before launching it and closes that new process afterward.
 
-Desktop agents that can click anywhere carry an obvious risk: an agent with
-OS-wide control can touch mail, password managers, and signed-in browsers
-(Cursor's Computer Use announcement, Oct 23, 2026, published no permission
-model for exactly this). deskcheck's answer is the headline feature:
-**a named-app allowlist with default deny**, checked at launch *and* at
-every input step, with operator-declared categories (password managers, credential
-stores, system-settings apps, browsers with existing profiles) denied
-outright. These are config checks, not automatic process classification.
-The native input guard described above is required in addition to that
-allowlist. See [docs/SECURITY.md](docs/SECURITY.md).
+Packages are unsigned. Do not bypass antivirus, organization policies or Windows
+security warnings. There is no public binary release until Alex approves one.
 
-## Quickstart
+## Developer quickstart
 
-```bash
-pip install -e .
-# 1. Write a test (steps are data, never code — no shell/exec step exists)
-# 2. Run it against the mock driver (hermetic demo, no real desktop needed)
-deskcheck run examples/demo-pass.yaml --config examples/config.yaml \
-  --driver mock --mock-windows demo-app
-# Exit 0 = pass, 1 = fail, 2 = setup/parse error, 3 = interrupted (Ctrl-C)
-# Reports: <test-dir>/runs/<name>/report.md + report.html + actions.jsonl
-#          + screenshots/<name>.png per screenshot step
+Requires Python 3.10+ and PyYAML 6+. The desktop UI also requires Tk.
+
+```sh
+python -m pip install .
+deskcheck run examples/demo-pass.yaml --config examples/config.yaml --driver mock
+deskcheck gui
 ```
 
-Experimental native backends are `--driver linux` (needs `xdotool` + `scrot`)
-and `--driver windows` (PowerShell + .NET). In this review branch their input
-steps are intentionally denied; use `--driver mock` for the verified test loop.
-If the driver is unavailable, deskcheck says so clearly instead of
-failing mid-run.
+Output: a new run directory containing `report.html`, `report.md`,
+`result.json`, `actions.jsonl` and captured PNGs. Explicit `--out-dir` must be
+empty; existing reports are never silently overwritten. Each default run uses
+a unique directory. Open the HTML report locally; it has no external resources.
 
-## One full example test
+Exit codes: **0 passed**, **1 failed**, **2 setup/input error**, **3 interrupted**.
+Interrupted/failed actions are not rolled back; the report never claims a pass.
+
+## Real Windows app test
+
+Supported: a **newly launched, non-elevated Win32/.NET standard-control app**
+with one root window; standard edit controls and buttons. Uses PID/HWND-bound
+messages, literal UTF-16 text, bounded client coordinates and app-only capture.
+It does not move the user's mouse or type into the global foreground window.
+
+Not supported: existing app attachment, browsers, credential/settings apps,
+terminals, elevated apps, Linux native control, games, Electron/custom GPU
+interfaces, arbitrary key chords, multi-process app trees or multi-root apps.
+Unsupported operations must fail, not fall back to mock or global input.
+
+Operator-written allowlist (replace with your actual absolute executable path):
+
+```yaml
+apps:
+  sample-app:
+    command: ["C:/TestApps/MySample.exe"]
+    category: app
+```
+
+Only trusted disposable test apps belong here. A launch command is a literal
+argv list, never a shell command. Windows closes the process it launched at
+the end of a CLI/desktop run; never use it for unsaved production work.
 
 ```yaml
 version: 1
-name: demo-pass
-app: demo-app
+name: save-note
+app: sample-app
 steps:
-  - type: launch
-    app: demo-app
-  - type: wait
-    ms: 10
-  - type: click
-    x: 100
-    y: 200
-  - type: type
-    text: "hello"
-  - type: key
-    key: Enter
-  - type: screenshot
-    name: main
-  - type: assert
-    kind: window-visible
-    window: demo-app
-  - type: assert
-    kind: screenshot-saved
-    screenshot: main
+  - {type: launch, app: sample-app}
+  - {type: click, x: 80, y: 100}
+  - {type: type, text: "Synthetic note only"}
+  - {type: click, x: 100, y: 165}
+  - {type: screenshot, name: completed}
+  - {type: assert, kind: window-visible, window: sample-app}
+  - {type: assert, kind: screenshot-saved, screenshot: completed}
 ```
 
-Step types, and only these: `launch`, `wait` (ms, or window-visible),
-`click` (x,y), `type` (text), `key` (named key), `screenshot` (named),
-`assert` (`window-visible` | `screenshot-saved` | `pixel-diff` vs a
-baseline, with tolerance + max-diff-ratio knobs). The parser rejects any
-unknown step type or unknown key with a clear error, and rejects
-shell/exec-style keys outright. Timeouts apply to every step; `--max-steps`
-caps runaway tests; Ctrl-C stops gracefully and marks the run interrupted.
-
-### Pixel-diff baselines (the Playwright-style accept flow)
-
-First run with no baseline fails with a clear "baseline missing" message.
-Accept the current screenshot as the baseline, then re-run:
-
-```bash
-deskcheck run examples/pixel-diff.yaml --config examples/config.yaml \
-  --driver mock --mock-windows demo-app --update-baselines
-deskcheck run examples/pixel-diff.yaml --config examples/config.yaml \
-  --driver mock --mock-windows demo-app
+```sh
+deskcheck run save-note.yaml --config allowlist.yaml --driver windows
 ```
 
-On a pixel-diff failure, a red diff image is written next to the report
-(`diff-<name>.png`). OCR is optional only: if `tesseract` is installed you
-may add your own checks outside deskcheck; it is never in the default path
-and never required.
+Coordinates are **client-area pixels**, relative to the captured app image,
+not desktop/screen pixels. Check DPI/layout and write tests for the actual app.
+`window-visible` checks the bound app, not whichever unrelated app is foreground.
 
-## MCP setup (for coding agents)
+## Baselines
 
-deskcheck speaks MCP over stdio (JSON-RPC 2.0, `initialize` /
-`tools/list` / `tools/call` / `ping`). Tools: `launch_app`, `click`,
-`type_text`, `press_key`, `screenshot`, `assert_window`, `run_test`
-(tool failures return `isError: true`, not a transport error, so the model
-can read the reason and retry).
+A missing baseline fails clearly. Review the intended screenshot, then
+explicitly accept it with `--update-baselines` or the desktop checkbox.
+This replaces matching baseline files, so do not accept regressions blindly.
+
+```sh
+deskcheck run examples/pixel-diff.yaml --config examples/config.yaml --driver mock --update-baselines
+deskcheck run examples/pixel-diff.yaml --config examples/config.yaml --driver mock
+```
+
+Baseline names are relative to the test's `baselines/` folder. Traversal,
+absolute/UNC paths, NTFS streams and linked output paths are rejected.
+
+## MCP
+
+Use an explicit workspace; agent-supplied test paths must stay below it.
 
 ```json
 {
   "mcpServers": {
     "deskcheck": {
-      "command": "deskcheck",
-      "args": ["mcp", "--config", "/path/to/config.yaml", "--driver", "linux"]
+      "command": "C:/Tools/DeskCheck/DeskCheck.exe",
+      "args": ["mcp", "--config", "C:/Tests/allowlist.yaml", "--workspace", "C:/Tests", "--driver", "windows"]
     }
   }
 }
 ```
 
-Drop-in agent instructions live in [AGENT-SKILL.md](AGENT-SKILL.md):
-write test → run → read report → fix → re-run.
+Tools: `launch_app`, `click`, `type_text`, `press_key`, `screenshot`,
+`assert_window`, `run_test`. Failed/interrupted runs return `isError: true`
+and a report path. Baseline replacement is denied unless the operator starts
+MCP with `--allow-baseline-updates`. No network server/listening port is opened.
 
-## How deskcheck differs from HQ's Holo4
+## Safety, delivery and verification
 
-Holo4 (in the HQ system) is a **model-driven autonomous desktop agent**:
-it decides what to do next on the desktop. deskcheck is the opposite side
-of that loop: it **verifies** — it runs only the steps a test file spells
-out, against an allowlist, and returns pass/fail. Interop is documented
-here only; there is no code coupling to HQ, and deskcheck never modifies
-HQ files. In a combined workflow, Holo4 (or any agent) builds, deskcheck
-checks, the agent fixes, deskcheck re-checks.
+- Typed contents are redacted from action logs. Screenshots can still contain
+  app data; use synthetic data and review artifacts before sharing.
+- This is **not an OS, filesystem or network sandbox**. Trusted test apps retain
+  their own capabilities. Config categories are operator declarations.
+- No existing browser profiles, real credentials or customer records are used
+  by the supplied examples/tests.
+- See [user guide](docs/USER-GUIDE.md), [security boundary](docs/SECURITY.md),
+  [release status](docs/RELEASE-STATUS.md), [agent usage](AGENT-SKILL.md).
+- Source is MIT licensed; retain copyright/license notices. Optional commercial
+  delivery/support terms must be separately agreed, not implied by this README.
 
-## Docs
+## Tests and local build
 
-- [docs/SECURITY.md](docs/SECURITY.md) — permission model + threat model
-- [docs/QA-2026-10-28.md](docs/QA-2026-10-28.md) — review evidence and release blockers
-- [docs/RESEARCH.md](docs/RESEARCH.md) — what was borrowed from Cursor,
-  Playwright, PyAutoGUI, and MCP conventions
-- [AGENT-SKILL.md](AGENT-SKILL.md) — drop-in instructions for coding agents
-
-## Tests
-
-```bash
-sh test/smoke.sh   # unit + e2e (MockDriver) + CLI + MCP handshake
+```sh
+python -W error::ResourceWarning -m unittest discover -s tests -q
 ```
 
-No network calls in tests. Dependencies: PyYAML only; everything else
-(including the PNG decoder used for pixel-diff) is stdlib.
+`test/native_acceptance.py` is opt-in and runs **only our compiled synthetic
+fixture**, including a covering decoy window. See the user guide for reproduction.
+GitHub CI uses only standard public runners, with no artifact/cache uploads.
+
+On Windows, install free PyInstaller 6 and run `python packaging/build_portable.py`.
+This builds a local portable folder, GUI launcher and sample app. It never
+publishes, signs, sends customer files or spends money.

@@ -18,15 +18,5 @@ def get_driver(name: str, mock_windows=None):
         from .drivers.windows import WindowsDriver
         return WindowsDriver()
     if name == "auto":
-        system = platform.system()
-        if system == "Linux":
-            try:
-                from .drivers.linux import LinuxDriver
-                return LinuxDriver()
-            except DriverUnavailable:
-                pass
-        elif system == "Windows":
-            from .drivers.windows import WindowsDriver
-            return WindowsDriver()
-        return MockDriver(windows=mock_windows)
+        raise DriverUnavailable("Choose --driver mock or --driver windows explicitly; auto never substitutes a simulated pass")
     raise DriverUnavailable(f"unknown driver '{name}' (mock|linux|windows|auto)")

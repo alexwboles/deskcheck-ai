@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+import uuid
 
 from deskcheck.drivers.base import Driver
 from deskcheck.drivers.mock import MockDriver
@@ -49,7 +50,7 @@ class TestInputSafety(unittest.TestCase):
                         "  - {type: launch, app: demo-app}\n" + steps,
                         encoding="utf-8")
         return run_test(str(path), self.config, driver,
-                        os.path.join(self.tmp.name, "out"))
+                        os.path.join(self.tmp.name, "out-"+uuid.uuid4().hex))
 
     def test_runner_refuses_focus_drift_for_every_input(self):
         for step in ("{type: click, x: 1, y: 2}",

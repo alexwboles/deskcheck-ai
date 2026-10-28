@@ -1,41 +1,21 @@
-# AGENT-SKILL: using deskcheck-ai in your build-fix loop
+# Use DeskCheck in a build/test loop
 
-Copy these instructions into your agent's skill/config. They assume the
-deskcheck MCP server is connected (see README "MCP setup"), or that the
-`deskcheck` CLI is available.
+These are optional instructions for a connected coding agent, not a grant of
+permission to change the operator's allowlist or execute arbitrary apps.
 
-## The loop
+1. Write a small YAML test with a named allowlisted app, synthetic input,
+   client-relative coordinates and meaningful assertions.
+2. Explicitly choose `mock` (simulated only) or `windows` (standard-control
+   app only). Never present mock output as real-app verification.
+3. Run with CLI or MCP. A nonzero CLI exit or `isError: true` is not success.
+   Read `result.json`, `report.html`, logs and screenshots.
+4. Fix the actual defect, then re-run into a new directory. Never delete or
+   overwrite old evidence to hide failures.
+5. Ask the operator before modifying the trusted config or accepting changed
+   baselines. MCP baseline updates require explicit operator startup permission.
 
-1. **Write a test** (YAML, in the repo under `deskcheck-tests/`). Steps
-   are data, never code — there is no shell/exec step, and the parser
-   rejects unknown step types/keys. Allowed steps only:
-   `launch`, `wait`, `click`, `type`, `key`, `screenshot`, `assert`.
-2. **Run it**: `deskcheck run deskcheck-tests/<name>.yaml --config
-   deskcheck-config.yaml` (or the `run_test` MCP tool).
-3. **Read the report**: `report.md` (summary + step table + failures),
-   `actions.jsonl` (one JSON line per action: timestamp, step, target,
-   outcome, screenshot path), and any `diff-*.png` on pixel-diff failure.
-4. **Fix the app** (not the test, unless the test itself is wrong —
-   say which one you changed and why).
-5. **Re-run** until the run passes (exit 0). Never declare GUI work done
-   without a passing deskcheck run.
-
-## Rules
-
-- Only launch apps on the allowlist in `deskcheck-config.yaml`. If a
-  launch is denied, do NOT work around it (no renaming, no launching via
-  another app, no editing the config to add a denied category). Ask the
-  human to change the config if the app genuinely belongs there.
-- Browsers: only with a fresh throwaway profile (`throwaway_profile:
-  true` in the config). Never point deskcheck at a browser carrying your
-  real profile, mail, or signed-in sessions.
-- Coordinates are primary-monitor pixels. Record the resolution with
-  every screenshot (the driver does this; check `actions.jsonl`).
-- Pixel-diff: a missing baseline is not a failure of the app — run with
-  `--update-baselines` once, eyeball the screenshot yourself, then
-  re-run. Only accept a baseline you have actually looked at.
-- If a run is interrupted (Ctrl-C), it is marked interrupted, not passed.
-  Re-run it.
-- Keep tests small and deterministic: one behaviour per test, explicit
-  waits, named screenshots. A flaky test is a bug in the test — fix it
-  before blaming the app.
+Do not use terminals, existing sessions, credentials, production data, global
+hotkeys or unsupported renderers. Do not route around permission denials.
+Capture is app-client-only; coordinates use that same client pixel space.
+Logs redact typed text, but screenshots can reveal app data. Review before
+sharing any artifact. There are no AI inference or paid API calls in DeskCheck.

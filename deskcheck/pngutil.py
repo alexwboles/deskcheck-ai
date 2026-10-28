@@ -23,18 +23,26 @@ def decode_png(data: bytes):
     (r, g, b, a) tuples."""
     if data[:8] != b"\x89PNG\r\n\x1a\n":
         raise ValueError("not a PNG file")
+    if len(data) > 32*1024*1024:
+        raise ValueError("PNG exceeds 32 MiB")
     pos, idat, plte, trns = 8, b"", None, None
     width = height = bit_depth = colour = None
     while pos < len(data):
+        if pos+12 > len(data):
+            raise ValueError("Truncated PNG chunk")
         (length,) = struct.unpack(">I", data[pos:pos + 4])
         ctype = data[pos + 4:pos + 8]
         chunk = data[pos + 8:pos + 8 + length]
+        if pos+12+length > len(data) or zlib.crc32(ctype+chunk)&0xffffffff != struct.unpack(">I",data[pos+8+length:pos+12+length])[0]:
+            raise ValueError("PNG chunk length/CRC mismatch")
         if ctype == b"IHDR":
             width, height, bit_depth, colour, comp, filt, inter = struct.unpack(">IIBBBBB", chunk)
             if bit_depth != 8:
                 raise ValueError(f"unsupported PNG bit depth {bit_depth} (only 8-bit)")
             if inter != 0:
                 raise ValueError("interlaced PNG not supported")
+            if not width or not height or width*height > 4000000 or comp != 0 or filt != 0:
+                raise ValueError("PNG dimensions/encoding unsupported (4 million pixel limit)")
         elif ctype == b"PLTE":
             plte = [tuple(chunk[i:i + 3]) for i in range(0, len(chunk), 3)]
         elif ctype == b"tRNS":
@@ -47,8 +55,15 @@ def decode_png(data: bytes):
     if width is None:
         raise ValueError("PNG missing IHDR")
     channels = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}[colour]
-    raw = zlib.decompress(idat)
     stride = width * channels
+    expected = height*(stride+1)
+    decoder = zlib.decompressobj()
+    try:
+        raw = decoder.decompress(idat,expected+1)
+    except zlib.error as exc:
+        raise ValueError("Invalid compressed PNG data") from exc
+    if len(raw) != expected or not decoder.eof or decoder.unconsumed_tail or decoder.unused_data:
+        raise ValueError("PNG pixel payload length mismatch")
     rows, prev = [], bytearray(stride)
     offset = 0
     for _ in range(height):
@@ -84,7 +99,7 @@ def decode_png(data: bytes):
                 out.append((v[0], v[1], v[2], 255))
             elif colour == 3:
                 rgb = plte[v[0]]
-                alpha = trns[v[0]] if trns else 255
+                alpha = trns[v[0]] if trns and v[0] < len(trns) else 255
                 out.append((rgb[0], rgb[1], rgb[2], alpha))
             elif colour == 4:
                 out.append((v[0], v[0], v[0], v[1]))
@@ -99,7 +114,7 @@ def encode_png(width, height, rows):
     def chunk(ctype, payload):
         c = struct.pack(">I", len(payload)) + ctype + payload
         return c + struct.pack(">I", zlib.crc32(ctype + payload) & 0xFFFFFFFF)
-    raw = b""
+    raw = bytearray()
     for row in rows:
         raw += b"\x00" + b"".join(bytes((r, g, b)) for (r, g, b, *_a) in row)
     ihdr = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)

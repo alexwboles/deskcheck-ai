@@ -2,20 +2,21 @@
 # deskcheck smoke: unit tests + CLI demo pass + denied-app negative case.
 set -e
 cd "$(dirname "$0")/.."
+smoke_root=$(mktemp -d)
 echo "== unit + e2e tests =="
 # Do not pipe to tail: POSIX sh would return tail's status and mask failures.
 python3 -m unittest discover -s tests -q
 echo "== CLI demo pass (MockDriver) =="
 python3 -m deskcheck run examples/demo-pass.yaml \
   --config examples/config.yaml --driver mock --mock-windows demo-app \
-  --out-dir /tmp/deskcheck-smoke/demo
-test -f /tmp/deskcheck-smoke/demo/report.md
-test -f /tmp/deskcheck-smoke/demo/report.html
-test -f /tmp/deskcheck-smoke/demo/actions.jsonl
+  --out-dir "$smoke_root/demo"
+test -f "$smoke_root/demo/report.md"
+test -f "$smoke_root/demo/report.html"
+test -f "$smoke_root/demo/actions.jsonl"
 echo "== CLI denied-app must exit 1 =="
 if python3 -m deskcheck run examples/denied-app.yaml \
   --config examples/config.yaml --driver mock \
-  --out-dir /tmp/deskcheck-smoke/denied; then
+  --out-dir "$smoke_root/denied"; then
   echo "FAIL: denied app run exited 0" >&2; exit 1
 fi
 echo "== MCP handshake smoke =="

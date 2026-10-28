@@ -20,6 +20,7 @@ from __future__ import annotations
 import yaml
 
 from .errors import PermissionDenied
+from .safety import load_yaml, safe_name
 
 ALWAYS_DENIED_CATEGORIES = {"password-manager", "credential-store", "system-settings"}
 # A browser is only allowlistable with a fresh throwaway profile.
@@ -31,7 +32,9 @@ class AppEntry:
         self.name = name
         self.command = command
         self.category = category
-        self.throwaway_profile = bool(throwaway_profile)
+        if not isinstance(throwaway_profile, bool):
+            raise ValueError("throwaway_profile must be a YAML boolean, not a string")
+        self.throwaway_profile = throwaway_profile
 
     def denial_reason(self):
         if self.category in ALWAYS_DENIED_CATEGORIES:
@@ -50,17 +53,29 @@ class PermissionConfig:
 
     @classmethod
     def from_dict(cls, data: dict) -> "PermissionConfig":
+        if not isinstance(data, dict) or set(data) - {"apps"}:
+            raise ValueError("Config must be a mapping with only the 'apps' key")
         apps = {}
         raw = (data or {}).get("apps") or {}
         if not isinstance(raw, dict):
             raise ValueError("config 'apps' must be a mapping")
         for name, entry in raw.items():
+            safe_name(name)
             if not isinstance(entry, dict):
-                entry = {"command": entry}
+                raise ValueError("Each app must be a mapping")
+            if set(entry) - {"command", "category", "throwaway_profile"}:
+                raise ValueError("Unknown app config field")
+            category = entry.get("category", "app")
+            if category not in ALWAYS_DENIED_CATEGORIES | {"app", "browser"}:
+                raise ValueError("Unknown app category")
+            command = entry.get("command")
+            if command is not None and not (isinstance(command, str) or
+                    isinstance(command, list) and command and all(isinstance(a, str) and '\x00' not in a for a in command)):
+                raise ValueError("Command must be a literal argv list (native) or a mock label")
             apps[name] = AppEntry(
                 name=name,
-                command=entry.get("command"),
-                category=entry.get("category", "app"),
+                command=command,
+                category=category,
                 throwaway_profile=entry.get("throwaway_profile", False),
             )
         return cls(apps)
@@ -68,7 +83,7 @@ class PermissionConfig:
     @classmethod
     def from_file(cls, path: str) -> "PermissionConfig":
         with open(path, "r", encoding="utf-8") as fh:
-            return cls.from_dict(yaml.safe_load(fh.read()) or {})
+            return cls.from_dict(load_yaml(fh.read(1024 * 1024 + 1)) or {})
 
     @classmethod
     def empty(cls) -> "PermissionConfig":

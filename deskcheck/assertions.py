@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 import shutil
+from pathlib import Path
 
 from .errors import AssertionFailed
 from .pngutil import decode_png, encode_png
@@ -52,8 +53,13 @@ def pixel_diff(actual_path: str, baseline_path: str, tolerance: float = 0.0,
             f"pixel-diff failed: baseline missing: '{baseline_path}'. "
             "Run with --update-baselines to accept the current screenshot "
             "as the baseline, then re-run.")
-    aw, ah, arows = decode_png(open(actual_path, "rb").read())
-    bw, bh, brows = decode_png(open(baseline_path, "rb").read())
+    if any(Path(p).stat().st_size > 32*1024*1024 for p in (actual_path, baseline_path)):
+        raise AssertionFailed("PNG exceeds 32 MiB")
+    try:
+        aw, ah, arows = decode_png(Path(actual_path).read_bytes())
+        bw, bh, brows = decode_png(Path(baseline_path).read_bytes())
+    except (ValueError, KeyError, IndexError) as exc:
+        raise AssertionFailed("Invalid or unsupported PNG") from exc
     if (aw, ah) != (bw, bh):
         raise AssertionFailed(
             f"pixel-diff failed: size mismatch actual {aw}x{ah} vs "
@@ -64,7 +70,7 @@ def pixel_diff(actual_path: str, baseline_path: str, tolerance: float = 0.0,
         row = []
         for x in range(aw):
             a, b = arows[y][x], brows[y][x]
-            gap = max(abs(a[i] - b[i]) for i in range(3))
+            gap = max(abs(a[i] - b[i]) for i in range(4))
             if gap > thresh:
                 diff_pixels += 1
                 row.append((255, 0, 0))
