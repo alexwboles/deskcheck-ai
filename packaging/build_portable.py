@@ -1,6 +1,7 @@
 """Reproducible local portable build. No publishing, installs, signing or paid APIs."""
 from importlib import metadata
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -14,6 +15,7 @@ if output.exists():
 output.mkdir(parents=True)
 subprocess.run([sys.executable,"-m","PyInstaller","--clean","--noconfirm",
     "--name","DeskCheck","--onedir","--console","--paths",str(root),
+    "--add-data",str(root/"deskcheck"/"assets")+os.pathsep+"deskcheck/assets",
     "--distpath",str(output),"--workpath",str(output/"build"),
     "--specpath",str(output),str(root/"packaging"/"entry.py")],cwd=root,check=True)
 app = output/"DeskCheck"
@@ -29,7 +31,7 @@ shutil.copytree(root/"examples",app/"examples",ignore=shutil.ignore_patterns("ru
 shutil.copytree(root/"docs",app/"docs")
 notices = app/"THIRD-PARTY-LICENSES"
 notices.mkdir()
-for package in ("pyinstaller","PyYAML"):
+for package in ("pyinstaller","PyYAML","Pillow"):
     dist = metadata.distribution(package)
     for file in dist.files or []:
         if "license" in str(file).lower() or "copying" in str(file).lower():

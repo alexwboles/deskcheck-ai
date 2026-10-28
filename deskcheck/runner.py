@@ -17,10 +17,12 @@ from .safety import atomic_bytes, contained, checked_root
 
 
 class RunResult:
-    def __init__(self, name, status, steps_run, failures, out_dir, driver=None):
+    def __init__(self, name, status, steps_run, failures, out_dir, driver=None, observations=None):
         self.name, self.status, self.steps_run = name, status, steps_run
         self.failures, self.out_dir = failures, str(out_dir)
         self.driver = driver
+        # Local GUI may reveal these with consent. Never serialize to evidence.
+        self.observations = observations or {}
 
     @property
     def passed(self):
@@ -42,7 +44,7 @@ def run_test(test_path, config, driver, out_dir, update_baselines=False,
         raise PermissionDenied("Output directory is not empty; choose a new run directory")
     out.mkdir(parents=True, exist_ok=True)
     baseline_root = Path(test_dir_baselines or Path(test_path).resolve().parent / "baselines")
-    entries, failures, shots = [], [], {}
+    entries, failures, shots, observations = [], [], {}, {}
     status, current_app, stopped = "pass", None, False
     old_handler = None
 
@@ -141,7 +143,9 @@ def run_test(test_path, config, driver, out_dir, update_baselines=False,
                         if assertion == "control-text":
                             config.check_input(current_app)
                             driver.check_input_target(current_app)
-                            if driver.read_text() != step["text"]:
+                            actual_text = driver.read_text()
+                            if actual_text != step["text"]:
+                                observations[i] = {"expected":step["text"], "actual":actual_text[:10000]}
                                 raise DeskcheckError("Selected control text did not match (values redacted)")
                         elif assertion == "window-visible":
                             assert_window_visible(driver, step["window"])
@@ -167,6 +171,19 @@ def run_test(test_path, config, driver, out_dir, update_baselines=False,
                 except KeyboardInterrupt:
                     raise
                 except Exception as exc:
+                    # Capture only this run's pinned app on a text mismatch. An
+                    # unsupported capture never changes the original failure.
+                    if i in observations and not interrupted():
+                        try:
+                            config.check_input(current_app)
+                            driver.check_input_target(current_app)
+                            failed_capture = contained(out, "screenshots/failure.png")
+                            failed_capture.parent.mkdir(parents=True, exist_ok=True)
+                            driver.screenshot(str(failed_capture))
+                            assert_screenshot_saved(str(failed_capture))
+                            shots["failed-step"] = failed_capture
+                        except Exception:
+                            pass
                     # Driver messages can contain input content. Expose only known safe
                     # validation messages; never echo native errors for type steps.
                     error = str(exc) if isinstance(exc, DeskcheckError) and kind != "type" else f"{type(exc).__name__}: {kind} failed"
@@ -189,7 +206,7 @@ def run_test(test_path, config, driver, out_dir, update_baselines=False,
         if old_handler is not None:
             signal.signal(signal.SIGINT, old_handler)
         _write_reports(test, entries, failures, status, out, shots, driver.name)
-    return RunResult(test["name"], status, len(entries), failures, out, driver.name)
+    return RunResult(test["name"], status, len(entries), failures, out, driver.name, observations)
 
 
 def _write_reports(test, entries, failures, status, out, shots, backend):

@@ -12,8 +12,8 @@ whole categories are denied no matter what the config says:
 Config denials are checked at launch AND at every input step. Categories
 and the throwaway-profile flag are operator assertions, not automatic OS
 identity/profile verification. Runner and MCP additionally require the
-driver's input-target guard; native input is currently disabled because
-its process/window isolation is unverified. See docs/SECURITY.md.
+driver's input-target guard. Windows supports newly launched standard-control
+test apps; native browser sessions remain unsupported. See docs/SECURITY.md.
 """
 from __future__ import annotations
 

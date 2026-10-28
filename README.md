@@ -14,9 +14,12 @@ Do not confuse a mock pass with testing a real application.
 1. Extract the **entire** provided DeskCheck ZIP into a writable folder.
 2. Double-click **DeskCheck Desktop.exe**. Keep `DeskCheck.exe` and `_internal`
    beside it; no administrator installation or registry changes are required.
-3. Click **Load sample**, then **Run test** for an offline simulated demo.
-4. Click **View report** to inspect the result and screenshot.
-5. Try **Windows sample** to test the bundled disposable standard-control app.
+3. Click **Try Windows sample** for a real check of our disposable sample,
+   or **Try simulation** for a clearly labelled simulated example.
+4. Follow **Choose app → Add actions → Expected result → Review results**.
+   The large app capture stays visible. **Run check** executes your saved steps.
+5. **View evidence** opens the report. **Save** keeps a versioned local check;
+   select it in the left sidebar next time. No YAML is needed for basic checks.
    The runner asks before launching it and closes that new process afterward.
 
 Packages are unsigned. Do not bypass antivirus, organization policies or Windows
@@ -24,7 +27,7 @@ security warnings. There is no public binary release until Alex approves one.
 
 ## Developer quickstart
 
-Requires Python 3.10+ and PyYAML 6+. The desktop UI also requires Tk.
+Requires Python 3.10+, PyYAML 6+, and Pillow 10+. The desktop UI also requires Tk.
 
 ```sh
 python -m pip install .
@@ -87,6 +90,8 @@ deskcheck run save-note.yaml --config allowlist.yaml --driver windows
 
 Coordinates are **client-area pixels**, relative to the captured app image,
 not desktop/screen pixels. Check DPI/layout and write tests for the actual app.
+The visual builder can pick these positions from a captured image without
+sending a click. **View full size** opens a readable, scrollable capture.
 `window-visible` checks the bound app, not whichever unrelated app is foreground.
 
 ## Baselines
