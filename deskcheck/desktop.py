@@ -345,7 +345,7 @@ class Desktop:
     def field(self, parent, label, value, key, choices=None):
         ttk.Label(parent, text=label,wraplength=260).pack(anchor='w', pady=(12, 5))
         var = tk.StringVar(value=str(value))
-        widget = ttk.Combobox(parent, textvariable=var, values=choices, state='readonly') if choices else ttk.Entry(parent, textvariable=var)
+        widget = ttk.Combobox(parent, textvariable=var, values=choices, state='readonly',font=('Segoe UI',-16)) if choices else ttk.Entry(parent, textvariable=var,font=('Segoe UI',-16))
         widget.pack(fill='x', pady=(0, 3))
         self.fields[key] = var
         var.trace_add('write',lambda *_:self.mark_dirty())
@@ -401,7 +401,7 @@ class Desktop:
         self.selected = min(self.selected, len(self.draft['steps'])-1)
         if compact:
             choices = [f'{i+1}. {step_title(step)}' for i,step in enumerate(self.draft['steps'])]
-            self.step_choice = ttk.Combobox(self.inspector,values=choices,state='readonly')
+            self.step_choice = ttk.Combobox(self.inspector,values=choices,state='readonly',font=('Segoe UI',-16))
             self.step_choice.current(self.selected)
             self.step_choice.pack(fill='x',pady=(0,8))
             self.step_choice.bind('<<ComboboxSelected>>',lambda _e:self.select_step_index(self.step_choice.current()))
@@ -956,10 +956,10 @@ class Desktop:
             ttk.Label(frame,text=label).pack(anchor='w')
             row = ttk.Frame(frame)
             row.pack(fill='x',pady=(4,12))
-            ttk.Entry(row,textvariable=var).pack(side='left',fill='x',expand=True)
+            ttk.Entry(row,textvariable=var,font=('Segoe UI',-16)).pack(side='left',fill='x',expand=True)
             self.button(row,'Browse…',lambda v=var:self.browse(v)).pack(side='right',padx=(8,0))
         ttk.Label(frame,text='Backend (simulation never proves a real app works)').pack(anchor='w')
-        self.backend = ttk.Combobox(frame,textvariable=import_mode,values=('mock','windows'),state='readonly')
+        self.backend = ttk.Combobox(frame,textvariable=import_mode,values=('mock','windows'),state='readonly',font=('Segoe UI',-16))
         self.backend.pack(anchor='w',pady=8)
         self.baseline = ttk.Checkbutton(frame,text='Accept screenshots as baselines (asks before replacement)',variable=self.accept)
         self.baseline.pack(anchor='w',pady=8)

@@ -181,6 +181,9 @@ class TestDesktop(unittest.TestCase):
         self.app.selected = 1
         self.app.render_step()
         self.assertFalse(self.app.dirty)
+        for widget in self.app.editor.winfo_children():
+            if widget.winfo_class() in ('TEntry','TCombobox'):
+                self.assertIn('-16',str(widget.cget('font')))
         self.app.fields['text'].set('edited but not applied yet')
         self.assertTrue(self.app.dirty)
         with patch('deskcheck.desktop.messagebox.askyesno',return_value=False):
