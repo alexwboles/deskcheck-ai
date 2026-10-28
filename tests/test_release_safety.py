@@ -85,6 +85,27 @@ class TestReleaseSafety(unittest.TestCase):
             run_test(str(self.write_case("  - {type: launch, app: demo-app}\n")),self.config,MockDriver(),str(out))
         self.assertEqual(original.read_bytes(),b"previous report")
 
+    def test_linked_root_is_refused(self):
+        actual = self.root/"actual"
+        actual.mkdir()
+        alias = self.root/"linked"
+        try:
+            alias.symlink_to(actual,target_is_directory=True)
+        except (OSError,NotImplementedError):
+            self.skipTest("Creating symlinks requires OS privileges here")
+        with self.assertRaises(PermissionDenied):
+            contained(alias,"report.html")
+
+    @unittest.skipUnless(os.name == "nt","Windows short-path acceptance")
+    def test_windows_short_path_spelling_is_not_a_symlink(self):
+        import ctypes
+        base = self.root/"long-directory-for-short-path-check"
+        base.mkdir()
+        buffer = ctypes.create_unicode_buffer(32768)
+        size = ctypes.windll.kernel32.GetShortPathNameW(str(base),buffer,len(buffer))
+        self.assertGreater(size,0)
+        self.assertEqual(contained(buffer.value,"new.json"),base.resolve()/"new.json")
+
     def test_typed_secrets_redacted_from_all_reports(self):
         secret = "SYNTHETIC_PRIVATE_TEXT_946"
         result,out = self.run_case("  - {type: launch, app: demo-app}\n  - {type: type, text: "+secret+"}\n")

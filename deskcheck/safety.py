@@ -60,6 +60,16 @@ def named_key(key):
     return key
 
 
+def checked_root(root):
+    original = Path(root).absolute()
+    for cursor in (original,*original.parents):
+        if cursor.is_symlink() or cursor.exists() and getattr(cursor.lstat(),"st_file_attributes",0) & 0x400:
+            raise PermissionDenied("Selected root must not pass through links/junctions")
+    # Canonicalize benign Windows 8.3 names/casing only after rejecting actual
+    # reparse points. A spelling difference is not evidence of a symlink.
+    return original.resolve()
+
+
 def contained(root, relative):
     """Resolve under an operator-selected root; reject cross-platform escapes."""
     if not isinstance(relative, str) or not relative or "\x00" in relative:
@@ -69,9 +79,7 @@ def contained(root, relative):
     parts = relative.replace("\\", "/").split("/")
     if any(p in ("", ".", "..") for p in parts):
         raise PermissionDenied("Path traversal is not allowed")
-    base = Path(root).resolve()
-    if Path(root).absolute() != base:
-        raise PermissionDenied("Selected root must not pass through links/junctions")
+    base = checked_root(root)
     result = base.joinpath(*parts)
     # Reject links/junctions even when they happen to point within the root.
     cursor = result

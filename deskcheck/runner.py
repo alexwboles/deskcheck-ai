@@ -13,7 +13,7 @@ from urllib.parse import quote
 from .assertions import assert_pixel_diff, assert_screenshot_saved, assert_window_visible
 from .errors import DeskcheckError, PermissionDenied
 from .parser import load_test
-from .safety import atomic_bytes, contained
+from .safety import atomic_bytes, contained, checked_root
 
 
 class RunResult:
@@ -36,11 +36,9 @@ def run_test(test_path, config, driver, out_dir, update_baselines=False,
     if type(update_baselines) is not bool:
         raise DeskcheckError("update_baselines must be a boolean")
     test = load_test(test_path)
-    out = Path(out_dir).absolute()
+    out = checked_root(out_dir)
     if out.exists() and any(out.iterdir()):
         raise PermissionDenied("Output directory is not empty; choose a new run directory")
-    if out.is_symlink() or out.resolve() != out:
-        raise PermissionDenied("Output directory must not pass through links/junctions")
     out.mkdir(parents=True, exist_ok=True)
     baseline_root = Path(test_dir_baselines or Path(test_path).resolve().parent / "baselines")
     entries, failures, shots = [], [], {}
