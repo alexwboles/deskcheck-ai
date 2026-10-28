@@ -9,16 +9,27 @@ It is a **test harness, not another agent brain**. It decides nothing about
 what to do — it runs exactly the steps in a YAML test file and reports
 whether they passed.
 
+> **QA review branch — not a production security boundary.** The mock test
+> loop is verified with synthetic data. Windows/Linux input steps now fail
+> closed: these drivers do not yet bind input to a verified process/window
+> or contain global clicks. This deliberately disables native click/type/key
+> through the runner and MCP server instead of trusting the last launch name.
+> Native launch and full-desktop screenshot operations still exist; screenshots
+> can include other apps. Do not use this branch on a sensitive desktop or
+> advertise it as safe native desktop automation. See `docs/QA-2026-10-28.md`.
+
 ## Why this exists
 
 Desktop agents that can click anywhere carry an obvious risk: an agent with
 OS-wide control can touch mail, password managers, and signed-in browsers
 (Cursor's Computer Use announcement, Oct 23, 2026, published no permission
 model for exactly this). deskcheck's answer is the headline feature:
-**a named-app allowlist with default deny**, enforced at launch *and* at
-every input step, with whole categories (password managers, credential
+**a named-app allowlist with default deny**, checked at launch *and* at
+every input step, with operator-declared categories (password managers, credential
 stores, system-settings apps, browsers with existing profiles) denied
-outright. See [docs/SECURITY.md](docs/SECURITY.md).
+outright. These are config checks, not automatic process classification.
+The native input guard described above is required in addition to that
+allowlist. See [docs/SECURITY.md](docs/SECURITY.md).
 
 ## Quickstart
 
@@ -33,8 +44,9 @@ deskcheck run examples/demo-pass.yaml --config examples/config.yaml \
 #          + screenshots/<name>.png per screenshot step
 ```
 
-On a real Linux desktop, use `--driver linux` (needs `xdotool` + `scrot`);
-on Windows, `--driver windows` (PowerShell + .NET, no new dependencies).
+Experimental native backends are `--driver linux` (needs `xdotool` + `scrot`)
+and `--driver windows` (PowerShell + .NET). In this review branch their input
+steps are intentionally denied; use `--driver mock` for the verified test loop.
 If the driver is unavailable, deskcheck says so clearly instead of
 failing mid-run.
 
@@ -126,6 +138,7 @@ checks, the agent fixes, deskcheck re-checks.
 ## Docs
 
 - [docs/SECURITY.md](docs/SECURITY.md) — permission model + threat model
+- [docs/QA-2026-10-28.md](docs/QA-2026-10-28.md) — review evidence and release blockers
 - [docs/RESEARCH.md](docs/RESEARCH.md) — what was borrowed from Cursor,
   Playwright, PyAutoGUI, and MCP conventions
 - [AGENT-SKILL.md](AGENT-SKILL.md) — drop-in instructions for coding agents

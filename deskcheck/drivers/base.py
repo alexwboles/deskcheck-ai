@@ -1,6 +1,8 @@
 """Driver interface. A driver owns the real (or fake) desktop."""
 from __future__ import annotations
 
+from ..errors import PermissionDenied
+
 
 class Driver:
     name = "base"
@@ -11,6 +13,18 @@ class Driver:
     def foreground_window(self):
         """Return the title/name of the foreground window, or None."""
         raise NotImplementedError
+
+    def check_input_target(self, app_name: str):
+        """Fail closed unless the driver can verify and contain input.
+
+        A cached launch name or matching window title is not process identity,
+        and global coordinates can click outside that window. Native drivers
+        must implement target identity, bounds and focus-race protection before
+        overriding this guard. This method intentionally denies by default.
+        """
+        raise PermissionDenied(
+            f"input denied: driver '{self.name}' has no verified input target; "
+            "native input is disabled pending process/window isolation")
 
     def click(self, x: int, y: int):
         raise NotImplementedError

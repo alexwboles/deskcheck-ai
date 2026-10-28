@@ -3,3 +3,6 @@ __pycache__/
 runs/
 deskcheck-mcp-output/
 baselines/
+.qa-output/
+build/
+*.egg-info/

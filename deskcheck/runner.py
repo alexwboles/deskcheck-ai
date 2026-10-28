@@ -121,6 +121,7 @@ def run_test(test_path: str, config: PermissionConfig, driver,
             elif stype in ("click", "type", "key"):
                 # Input steps re-check permission against the focused app.
                 config.check_input(current_app)
+                driver.check_input_target(current_app)
                 if stype == "click":
                     driver.click(step["x"], step["y"])
                     target = f"{step['x']},{step['y']}"

@@ -9,11 +9,11 @@ whole categories are denied no matter what the config says:
 * browsers carrying an existing profile/session — denied unless the entry
   sets ``throwaway_profile: true`` (a fresh, throwaway profile only)
 
-Denials are enforced at launch AND at every input step (click/type/key):
-an allowlisted app cannot be used as a trampoline to drive a denied app,
-because input steps are checked against the currently focused app.
-Every denial fails the run with a clear error and is written to the
-JSONL action log.
+Config denials are checked at launch AND at every input step. Categories
+and the throwaway-profile flag are operator assertions, not automatic OS
+identity/profile verification. Runner and MCP additionally require the
+driver's input-target guard; native input is currently disabled because
+its process/window isolation is unverified. See docs/SECURITY.md.
 """
 from __future__ import annotations
 

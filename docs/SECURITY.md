@@ -1,5 +1,21 @@
 # Security model: allowlist, default deny
 
+## Review-branch restriction (2026-10-28)
+
+The original runner and MCP server checked the cached last-launch app, not
+the actual input destination. Synthetic focus-drift regressions reproduced
+this bypass even though all 29 original tests passed. Both entry points now
+require a driver input-target guard as well as config permission. Mock input
+checks simulated focus. Native Windows/Linux drivers inherit a default-deny
+guard, so click/type/key are disabled until process identity, target bounds,
+focus-race containment and key/text escaping are implemented and tested.
+Merely comparing a window title is not an acceptable native fix.
+
+This restriction applies to runner/MCP input dispatch. It does not sandbox
+Python callers invoking driver methods directly, trusted launch commands,
+filesystem/network access, or full-screen captures. Do not run on a desktop
+with private information visible. No native GUI acceptance test was performed.
+
 ## The model
 
 deskcheck's headline feature is a permission model built for the risk
@@ -10,10 +26,10 @@ browsers, system settings. deskcheck narrows that to a named list.
 - **Config file, named-app allowlist.** `apps:` maps a name to
   `{command, category, throwaway_profile}`. Anything not listed is
   **denied by default**.
-- **Enforced twice.** Denials are checked at `launch` AND at every input
-  step (`click`, `type`, `key`), which re-checks permission against the
-  currently focused app. An allowlisted app cannot be used as a
-  trampoline to drive a denied app.
+- **Enforced twice, with an input gate.** Config denials are checked at
+  `launch` AND at every input step (`click`, `type`, `key`). The driver
+  must also verify its target. Only the simulated driver currently meets
+  that contract; native input is denied, not claimed to be isolated.
 - **Denied categories, even if listed.** These are refused no matter
   what the config says:
   - `password-manager` — password managers, vaults
@@ -23,7 +39,8 @@ browsers, system settings. deskcheck narrows that to a named list.
   unless it sets `throwaway_profile: true` — i.e. it must launch with a
   fresh, empty profile (e.g. `chromium --user-data-dir=/tmp/deskcheck-profile`),
   never an existing profile/session carrying mail, logins, or cookies.
-  The flag is enforced on the entry, not just documented.
+  The flag is checked on the entry, but profile creation/emptiness and
+  executable identity are not verified. It is not a browser sandbox.
 - **Steps are data, never code.** There is no shell/exec step; the
   parser rejects unknown step types, unknown keys, and shell/exec-style
   keys before anything runs. The only commands that ever execute are the
@@ -34,13 +51,13 @@ browsers, system settings. deskcheck narrows that to a named list.
 
 ## Threat model
 
-What deskcheck protects against:
+What the current runner/MCP config and input gate check:
 
 - An agent (or a prompt-injected test file) launching an app outside
   the allowlist, or smuggling a shell command into a test.
-- An agent reaching a password manager, credential store, or settings
-  app through the desktop, directly or via a trampoline app.
-- An agent driving a browser that carries the user's real sessions.
+- Entries explicitly classified as denied categories by the operator.
+- Input dispatch by a native driver without verified target isolation
+  (currently all Windows/Linux input), and simulated focus drift.
 
 What deskcheck does NOT protect against (be honest about the boundary):
 
@@ -53,8 +70,8 @@ What deskcheck does NOT protect against (be honest about the boundary):
   file/network access keeps that access.
 - A compromised driver or a second agent running alongside deskcheck
   with its own desktop access. deskcheck constrains *its own* steps only.
-- Screenshots may contain sensitive pixels from the allowlisted app
-  itself (e.g. a document it opens). Treat run output directories as
+- Screenshots may contain sensitive pixels from any visible app because
+  native capture is full-desktop, not app-scoped. Treat run output directories as
   sensitive and do not publish them unreviewed.
 
 ## Operator checklist

@@ -3,7 +3,8 @@
 set -e
 cd "$(dirname "$0")/.."
 echo "== unit + e2e tests =="
-python3 -m unittest discover -s tests -v 2>&1 | tail -5
+# Do not pipe to tail: POSIX sh would return tail's status and mask failures.
+python3 -m unittest discover -s tests -q
 echo "== CLI demo pass (MockDriver) =="
 python3 -m deskcheck run examples/demo-pass.yaml \
   --config examples/config.yaml --driver mock --mock-windows demo-app \

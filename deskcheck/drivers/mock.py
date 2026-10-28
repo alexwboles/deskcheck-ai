@@ -15,6 +15,7 @@ import hashlib
 import os
 
 from .base import Driver
+from ..errors import PermissionDenied
 from ..pngutil import encode_png
 
 
@@ -38,6 +39,12 @@ class MockDriver(Driver):
 
     def foreground_window(self):
         return self._focused
+
+    def check_input_target(self, app_name):
+        # The simulated desktop has no OS windows or focus race. Do not copy
+        # this title-only check into a native driver.
+        if not app_name or self.foreground_window() != app_name:
+            raise PermissionDenied("input denied: simulated focus left the launched app")
 
     def click(self, x, y):
         self.actions.append(("click", x, y))

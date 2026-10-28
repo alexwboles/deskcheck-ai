@@ -78,6 +78,7 @@ class MCPServer:
                 return self._ok(f"launched '{args['app']}'")
             if name in ("click", "type_text", "press_key"):
                 self.config.check_input(self.current_app)
+                self.driver.check_input_target(self.current_app)
                 if name == "click":
                     self.driver.click(args["x"], args["y"])
                     return self._ok(f"clicked {args['x']},{args['y']}")
