@@ -30,6 +30,8 @@ scrollable native-size image. Use **Next** in the fixed bottom toolbar to move
 through setup, or use the stage buttons; navigation never disappears. A long
 editor/results pane scrolls independently. On smaller windows the failure
 explanation comes before the action list. Stop stays visible during a run.
+The compact editor uses a step dropdown in place of the tall action list so
+the selected step's fields remain the focus; Add/Up/Down/Remove stay grouped.
 
 **Save** / Ctrl+S keeps the check in the left sidebar. Imports and edits create
 immutable revision files; a single atomic metadata pointer selects the current

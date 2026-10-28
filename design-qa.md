@@ -49,6 +49,10 @@ Date: 2026-10-28. Scope: actual native desktop implementation, not an HTML mock.
    bad-save behavior rather than merely giving a valid app a wrong expectation.
 6. [P2, fixed] Tall legacy progress chrome competed with the content. Progress
    is now a thin strip and the final outcome has an explicit readable status.
+7. [P2, fixed] Packaged laptop-size inspection found an overflowing Remove
+   button and an action list that pushed editable fields below the fold.
+   The four controls now share an equal-width grid. Compact windows use a
+   step dropdown instead of a tall tree so the selected fields get priority.
 
 After these fixes the implementation and reference were placed together again
 in full and focused comparisons. No actionable P0/P1/P2 finding remains in this

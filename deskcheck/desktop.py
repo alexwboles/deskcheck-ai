@@ -396,22 +396,33 @@ class Desktop:
                    'windows', Path(path).stem+' check')
 
     def render_builder(self):
+        compact = self.root.winfo_height()<850
         self.label('Your check' if self.stage==1 else 'What should happen?', True)
-        self.label('Select a step to edit it. Pick click locations on an app capture.' if self.stage==1 else
-                   'For text checks, click the result control before verifying its text.')
-        self.steps_view = ttk.Treeview(self.inspector, show='tree', selectmode='browse', height=4)
-        self.steps_view.pack(fill='x', pady=(0, 6))
-        for i, step in enumerate(self.draft['steps']):
-            self.steps_view.insert('', 'end', iid=str(i), text='  '+step_title(step), image=self.icon('circle'))
         self.selected = min(self.selected, len(self.draft['steps'])-1)
-        self.steps_view.selection_set(str(self.selected))
-        self.steps_view.see(str(self.selected))
-        self.steps_view.bind('<<TreeviewSelect>>', self.select_step)
+        if compact:
+            choices = [f'{i+1}. {step_title(step)}' for i,step in enumerate(self.draft['steps'])]
+            self.step_choice = ttk.Combobox(self.inspector,values=choices,state='readonly')
+            self.step_choice.current(self.selected)
+            self.step_choice.pack(fill='x',pady=(0,8))
+            self.step_choice.bind('<<ComboboxSelected>>',lambda _e:self.select_step_index(self.step_choice.current()))
+        else:
+            self.label('Select a step to edit it. Pick click locations on an app capture.' if self.stage==1 else
+                       'For text checks, click the result control before verifying its text.')
+            self.steps_view = ttk.Treeview(self.inspector, show='tree', selectmode='browse', height=4)
+            self.steps_view.pack(fill='x', pady=(0, 6))
+            for i, step in enumerate(self.draft['steps']):
+                self.steps_view.insert('', 'end', iid=str(i), text='  '+step_title(step), image=self.icon('circle'))
+            self.steps_view.selection_set(str(self.selected))
+            self.steps_view.see(str(self.selected))
+            self.steps_view.bind('<<TreeviewSelect>>', self.select_step)
         row = ttk.Frame(self.inspector)
         row.pack(fill='x', pady=(4, 8))
-        for text, command in (('Add',self.add_step),('Up',lambda:self.move_step(-1)),
-                              ('Down',lambda:self.move_step(1)),('Remove',self.remove_step)):
-            self.button(row, text, command, style='Quiet.TButton').pack(side='left')
+        for n,(text, command) in enumerate((('Add',self.add_step),('Up',lambda:self.move_step(-1)),
+                              ('Down',lambda:self.move_step(1)),('Remove',self.remove_step))):
+            row.columnconfigure(n,weight=1,uniform='actions')
+            button = self.button(row, text, command, style='Quiet.TButton')
+            button.configure(width=6,padding=(4,6))
+            button.grid(row=0,column=n,sticky='ew')
         self.editor = ttk.Frame(self.inspector)
         self.editor.pack(fill='x')
         self.render_step()
@@ -421,13 +432,21 @@ class Desktop:
         selected = self.steps_view.selection() if self.steps_view else ()
         if self.running or not selected or int(selected[0])==self.selected:
             return
+        self.select_step_index(int(selected[0]))
+
+    def select_step_index(self, index):
+        if self.running or index<0 or index==self.selected:
+            return
         old = self.selected
         try:
             self.read_step()
-            self.selected = int(selected[0])
+            self.selected = index
             self.render_step()
         except Exception as exc:
-            self.steps_view.selection_set(str(old))
+            if self.steps_view:
+                self.steps_view.selection_set(str(old))
+            elif hasattr(self,'step_choice'):
+                self.step_choice.current(old)
             self.error(exc)
 
     def render_step(self):
