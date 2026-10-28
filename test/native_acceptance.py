@@ -26,11 +26,14 @@ def main():
         driver.click(80,100)
         synthetic = "Literal +%^{braces} 'quoted' café"
         driver.type_text(synthetic)
+        assert driver.read_text() == synthetic
         driver.click(100,165)
         state = json.loads((run/"state.json").read_text(encoding="utf-8-sig"))
         assert state["text"] == synthetic,state
         assert state["clicks"] == 1,state
         assert state["result"] == "Saved: "+synthetic,state
+        driver.click(80,225)
+        assert driver.read_text() == "Saved: "+synthetic
         driver.screenshot(str(run/"app.png"))
         width,height,_ = decode_png((run/"app.png").read_bytes())
         assert (width,height) == driver.resolution()

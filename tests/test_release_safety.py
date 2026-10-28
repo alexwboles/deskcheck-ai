@@ -126,6 +126,16 @@ class TestReleaseSafety(unittest.TestCase):
         result,_ = self.run_case("  - {type: assert, kind: screenshot-saved, screenshot: old}\n")
         self.assertFalse(result.passed)
 
+    def test_control_text_assertion_matches_and_redacts(self):
+        result,out = self.run_case("  - {type: launch, app: demo-app}\n  - {type: type, text: SYNTHETIC_ASSERT_SECRET}\n  - {type: assert, kind: control-text, text: SYNTHETIC_ASSERT_SECRET}\n")
+        self.assertTrue(result.passed)
+        self.assertNotIn("SYNTHETIC_ASSERT_SECRET",(out/"report.html").read_text())
+
+    def test_control_text_mismatch_fails_without_values(self):
+        result,out = self.run_case("  - {type: launch, app: demo-app}\n  - {type: assert, kind: control-text, text: SYNTHETIC_ASSERT_SECRET}\n")
+        self.assertFalse(result.passed)
+        self.assertNotIn("SYNTHETIC_ASSERT_SECRET",(out/"actions.jsonl").read_text())
+
     def test_duplicate_screenshot_refused(self):
         result,_ = self.run_case("  - {type: launch, app: demo-app}\n  - {type: screenshot, name: x}\n  - {type: screenshot, name: x}\n")
         self.assertFalse(result.passed)

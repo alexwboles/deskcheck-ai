@@ -137,7 +137,12 @@ def run_test(test_path, config, driver, out_dir, update_baselines=False,
                     elif kind == "assert":
                         assertion = step["kind"]
                         target = assertion
-                        if assertion == "window-visible":
+                        if assertion == "control-text":
+                            config.check_input(current_app)
+                            driver.check_input_target(current_app)
+                            if driver.read_text() != step["text"]:
+                                raise DeskcheckError("Selected control text did not match (values redacted)")
+                        elif assertion == "window-visible":
                             assert_window_visible(driver, step["window"])
                         else:
                             actual = shots.get(step["screenshot"])

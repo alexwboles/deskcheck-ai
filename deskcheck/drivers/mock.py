@@ -25,6 +25,7 @@ class MockDriver(Driver):
     def __init__(self, windows=None, width=32, height=24):
         self._windows = list(windows or [])
         self._focused = None
+        self._text = ""
         self.width = width
         self.height = height
         self.actions = []  # recorded for tests: list of tuples
@@ -51,6 +52,10 @@ class MockDriver(Driver):
 
     def type_text(self, text):
         self.actions.append(("type", text))
+        self._text += text
+
+    def read_text(self):
+        return self._text
 
     def press_key(self, key):
         self.actions.append(("key", key))

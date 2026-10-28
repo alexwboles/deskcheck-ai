@@ -14,7 +14,7 @@ Default workspace: your home `Documents/DeskCheck` folder; every sample/run
 gets a unique directory. `DESKCHECK_WORKSPACE` can choose another local folder.
 
 **Windows sample** creates an allowlist and test for the bundled synthetic
-standard-control EXE. It asks for confirmation before launch; after six steps,
+standard-control EXE. It asks for confirmation before launch; after the steps,
 view the app-only screenshot. The test app is closed afterward. No browser,
 mailbox or real customer data is involved.
 
@@ -30,7 +30,9 @@ mailbox or real customer data is involved.
 
 Steps: `launch`, `wait` (`ms` and/or bound `window`), `click` (`x`, `y`),
 `type` (printable literal `text`), `key` (single named `key`), `screenshot`
-(`name`), `assert` (`window-visible`, `screenshot-saved`, `pixel-diff`).
+(`name`), `assert` (`window-visible`, `screenshot-saved`, `pixel-diff`,
+`control-text`). Click a standard control and use a `control-text` assertion
+with `text` to verify its exact value without echoing it into the report.
 
 Names: 1–80 ASCII letters/digits/underscore/hyphen, starting with a letter or
 digit. Single keys: Enter/Return, Tab, Escape, Backspace, Delete, arrows,

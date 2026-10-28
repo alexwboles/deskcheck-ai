@@ -25,7 +25,10 @@ def main():
     test = {"version":1,"name":"packaged-native","app":"sample-app","steps":[
         {"type":"launch","app":"sample-app"},{"type":"click","x":80,"y":100},
         {"type":"type","text":"PACKAGED_LITERAL +%^{x} café"},
-        {"type":"click","x":100,"y":165},{"type":"screenshot","name":"native"},
+        {"type":"click","x":100,"y":165},
+        {"type":"click","x":80,"y":225},
+        {"type":"assert","kind":"control-text","text":"Saved: PACKAGED_LITERAL +%^{x} café"},
+        {"type":"screenshot","name":"native"},
         {"type":"assert","kind":"window-visible","window":"sample-app"}]}
     (output/"config.yaml").write_text(json.dumps(config),encoding="utf-8")
     (output/"test.yaml").write_text(json.dumps(test),encoding="utf-8")

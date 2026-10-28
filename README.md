@@ -74,6 +74,8 @@ steps:
   - {type: click, x: 80, y: 100}
   - {type: type, text: "Synthetic note only"}
   - {type: click, x: 100, y: 165}
+  - {type: click, x: 80, y: 225}
+  - {type: assert, kind: control-text, text: "Saved: Synthetic note only"}
   - {type: screenshot, name: completed}
   - {type: assert, kind: window-visible, window: sample-app}
   - {type: assert, kind: screenshot-saved, screenshot: completed}

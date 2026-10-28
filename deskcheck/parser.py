@@ -25,9 +25,9 @@ STEP_SPECS = {
     "key": ({"key"}, {"key"}),
     "screenshot": ({"name"}, {"name"}),
     "assert": ({"kind", "window", "screenshot", "baseline", "tolerance",
-                "max_diff_ratio"}, {"kind"}),
+                "max_diff_ratio", "text"}, {"kind"}),
 }
-ASSERT_KINDS = {"window-visible", "screenshot-saved", "pixel-diff"}
+ASSERT_KINDS = {"window-visible", "screenshot-saved", "pixel-diff", "control-text"}
 # Keys that look like code execution; rejected with an explicit message
 # even when they appear outside a step.
 FORBIDDEN_KEYS = {"shell", "exec", "command", "run", "eval", "system",
@@ -137,7 +137,11 @@ def parse_test(text: str, source: str = "<test>") -> dict:
                 raise ParseError(f"{where} (assert): unknown kind {kind!r} "
                                  f"(allowed: {sorted(ASSERT_KINDS)})")
             step["kind"] = kind
-            if kind == "window-visible":
+            if kind == "control-text":
+                if "text" not in raw:
+                    raise ParseError("control-text assertion requires literal text")
+                step["text"] = literal_text(raw["text"])
+            elif kind == "window-visible":
                 if "window" not in raw:
                     raise ParseError(f"{where} (assert window-visible): 'window' required")
                 step["window"] = _check_str(raw["window"], "window", where)

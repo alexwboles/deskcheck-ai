@@ -26,8 +26,8 @@ class Desktop:
         self.running = False
         self.report = None
         root.title("DeskCheck — Desktop test runner")
-        root.geometry("960x740")
-        root.minsize(740,650)
+        root.geometry(f"{min(960,root.winfo_screenwidth()-60)}x{min(740,root.winfo_screenheight()-100)}")
+        root.minsize(740,620)
         root.configure(bg="#f3f6fa")
         style = ttk.Style(root)
         style.theme_use("clam")
@@ -36,7 +36,10 @@ class Desktop:
         style.configure("Title.TLabel",font=("Segoe UI",24,"bold"))
         style.configure("TButton",font=("Segoe UI",11),padding=(14,9))
         style.configure("TEntry",padding=8)
-        frame = ttk.Frame(root,padding=28)
+        style.configure("TCheckbutton",background="#f3f6fa",font=("Segoe UI",10))
+        style.configure("Primary.TButton",background="#176a72",foreground="white")
+        style.map("Primary.TButton",background=[("active","#12575e"),("disabled","#e2e7eb")],foreground=[("disabled","#7b8790")])
+        frame = ttk.Frame(root,padding=20)
         frame.pack(fill="both",expand=True)
         frame.columnconfigure(1,weight=1)
         ttk.Label(frame,text="DeskCheck",style="Title.TLabel").grid(row=0,column=0,columnspan=3,sticky="w")
@@ -66,7 +69,7 @@ class Desktop:
         self.sample.pack(side="left")
         self.native_sample = ttk.Button(toolbar,text="Windows sample",command=self.load_windows_sample)
         self.native_sample.pack(side="left",padx=(8,0))
-        self.run = ttk.Button(toolbar,text="Run test",command=self.start)
+        self.run = ttk.Button(toolbar,text="Run test",command=self.start,style="Primary.TButton")
         self.run.pack(side="left",padx=10)
         self.stop = ttk.Button(toolbar,text="Stop",command=self.cancel.set,state="disabled")
         self.stop.pack(side="left")
@@ -75,13 +78,13 @@ class Desktop:
         self.progress = ttk.Progressbar(frame,mode="determinate")
         self.progress.grid(row=8,column=0,columnspan=3,sticky="ew")
         ttk.Label(frame,textvariable=self.status,wraplength=840).grid(row=9,column=0,columnspan=3,sticky="w",pady=12)
-        self.log = tk.Text(frame,height=9,wrap="word",font=("Consolas",10),bg="white",fg="#203542",relief="flat",padx=14,pady=12,state="disabled")
+        self.log = tk.Text(frame,height=6,wrap="word",font=("Consolas",10),bg="white",fg="#203542",relief="flat",padx=14,pady=12,state="disabled")
         self.log.grid(row=10,column=0,columnspan=3,sticky="nsew")
         frame.rowconfigure(10,weight=1)
         ttk.Label(frame,text="Offline • No AI/API charges • Typed text redacted from logs\nScreenshots can contain app data. Use synthetic data and review before sharing.",wraplength=840).grid(row=11,column=0,columnspan=3,sticky="w",pady=(14,0))
         ttk.Label(frame,text=f"Version {__version__}  |  Outputs: {self.workspace}",wraplength=840,font=("Segoe UI",9)).grid(row=12,column=0,columnspan=3,sticky="w",pady=(8,0))
         root.protocol("WM_DELETE_WINDOW",self.close)
-        root.after(100,self.poll)
+        self.timer = root.after(100,self.poll)
 
     def browse(self,var):
         path = filedialog.askopenfilename(title="Choose YAML",filetypes=[("YAML","*.yaml *.yml")])
@@ -89,6 +92,7 @@ class Desktop:
             var.set(path)
 
     def load_sample(self):
+        self.reset_sample()
         sample = self.workspace/("sample-"+uuid.uuid4().hex[:8])
         sample.mkdir(parents=True)
         test = {"version":1,"name":"sample","app":"demo-app","steps":[
@@ -117,6 +121,7 @@ class Desktop:
         if not exe.is_file():
             messagebox.showinfo("Portable Windows sample","The prebuilt Windows sample is included in the portable package. Source developers can compile test/Fixture.cs as .qa-output/DeskCheckSample.exe.")
             return
+        self.reset_sample()
         sample = self.workspace/("windows-sample-"+uuid.uuid4().hex[:8])
         sample.mkdir(parents=True)
         test = {"version":1,"name":"windows-sample","app":"sample-app","steps":[
@@ -124,6 +129,8 @@ class Desktop:
             {"type":"click","x":80,"y":100},
             {"type":"type","text":"Synthetic acceptance check"},
             {"type":"click","x":100,"y":165},
+            {"type":"click","x":80,"y":225},
+            {"type":"assert","kind":"control-text","text":"Saved: Synthetic acceptance check"},
             {"type":"screenshot","name":"completed"},
             {"type":"assert","kind":"window-visible","window":"sample-app"}]}
         (sample/"test.yaml").write_text(json.dumps(test,indent=2),encoding="utf-8")
@@ -133,6 +140,14 @@ class Desktop:
         self.mode.set("windows")
         self.accept.set(False)
         self.status.set("Windows sample loaded. Run test will ask before launching the bundled offline sample app.")
+
+    def reset_sample(self):
+        self.report = None
+        self.view.configure(state="disabled")
+        self.progress.configure(value=0)
+        self.log.configure(state="normal")
+        self.log.delete("1.0","end")
+        self.log.configure(state="disabled")
 
     def start(self):
         if self.running:
@@ -199,7 +214,7 @@ class Desktop:
                         self.append(self.status.get())
         except queue.Empty:
             pass
-        self.root.after(100,self.poll)
+        self.timer = self.root.after(100,self.poll)
 
     def open_report(self):
         if self.report and self.report.is_file():
@@ -210,6 +225,7 @@ class Desktop:
             self.cancel.set()
             self.status.set("Stopping safely… wait for the run to finish before closing.")
             return
+        self.root.after_cancel(self.timer)
         self.root.destroy()
 
 

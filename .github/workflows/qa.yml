@@ -30,4 +30,16 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Native acceptance failed' }
       - name: Wheel build
         run: python -m pip wheel --no-deps --wheel-dir .qa-output/wheels .
+      - name: Windows portable build and native packaged acceptance
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python -m pip install "pyinstaller>=6,<7"
+          if ($LASTEXITCODE -ne 0) { throw 'Build-tool install failed' }
+          python packaging/build_portable.py
+          if ($LASTEXITCODE -ne 0) { throw 'Portable build failed' }
+          $packages = @(Get-ChildItem -LiteralPath .qa-output -Directory -Filter 'portable-v0.2.0-*')
+          if ($packages.Count -ne 1) { throw 'Expected exactly one fresh portable package' }
+          python test/portable_acceptance.py (Join-Path $packages[0].FullName 'DeskCheck')
+          if ($LASTEXITCODE -ne 0) { throw 'Packaged native acceptance failed' }
       # No artifacts, caches, releases or publishing: avoid storage charges.

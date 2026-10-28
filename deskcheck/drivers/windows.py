@@ -74,6 +74,7 @@ class WindowsDriver(Driver):
         sig(self.u,"ChildWindowFromPointEx",[W.HWND,W.POINT,W.UINT],W.HWND)
         sig(self.u,"GetNextDlgTabItem",[W.HWND,W.HWND,W.BOOL],W.HWND)
         sig(self.u,"GetClassNameW",[W.HWND,W.LPWSTR,C.c_int],C.c_int)
+        sig(self.u,"GetWindowLongW",[W.HWND,C.c_int],W.LONG)
         sig(self.u,"SendMessageTimeoutW",[W.HWND,W.UINT,W.WPARAM,W.LPARAM,W.UINT,W.UINT,C.POINTER(C.c_size_t)],C.c_ssize_t)
         sig(self.u,"GetDC",[W.HWND],H)
         sig(self.u,"PrintWindow",[W.HWND,H,W.UINT],W.BOOL)
@@ -210,6 +211,8 @@ class WindowsDriver(Driver):
         self.u.GetClassNameW(target,cls,256)
         if "edit" not in cls.value.lower():
             raise PermissionDenied("Click a standard edit control before typing")
+        if self.u.GetWindowLongW(target,-16) & 0x20:
+            raise PermissionDenied("Password edit controls are not supported")
         # UTF-16 code units; no SendKeys expansion, shell interpolation or clipboard.
         raw = text.encode("utf-16-le")
         for i in range(0,len(raw),2):
@@ -232,6 +235,20 @@ class WindowsDriver(Driver):
         else:
             self._send(target,0x100,VKEYS[key],1)
             self._send(target,0x101,VKEYS[key],0xc0000001)
+
+    def read_text(self):
+        self.check_input_target(self._app)
+        target = self._owned(self._input_hwnd)
+        cls = C.create_unicode_buffer(256)
+        self.u.GetClassNameW(target,cls,256)
+        if "edit" in cls.value.lower() and self.u.GetWindowLongW(target,-16) & 0x20:
+            raise PermissionDenied("Password edit controls are not supported")
+        length = self._send(target,0x0e)
+        if length > 10000:
+            raise DeskcheckError("Selected control text exceeds 10000 characters")
+        value = C.create_unicode_buffer(length+1)
+        self._send(target,0x0d,len(value),C.addressof(value))
+        return value.value
 
     def screenshot(self,path):
         self.check_input_target(self._app)

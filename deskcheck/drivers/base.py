@@ -45,5 +45,8 @@ class Driver:
     def resolution(self):
         return (0, 0)
 
+    def read_text(self):
+        raise PermissionDenied("Selected-control text is unsupported by this driver")
+
     def close(self):
         pass
