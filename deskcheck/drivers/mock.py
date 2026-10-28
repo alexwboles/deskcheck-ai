@@ -32,6 +32,7 @@ class MockDriver(Driver):
 
     def launch(self, app_name, command=None):
         self.actions.append(("launch", app_name))
+        self._text = ""
         if self._windows and app_name not in self._windows:
             # Still "launch" but no window appears: window-visible fails.
             self._focused = None

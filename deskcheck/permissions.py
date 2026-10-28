@@ -56,7 +56,7 @@ class PermissionConfig:
         if not isinstance(data, dict) or set(data) - {"apps"}:
             raise ValueError("Config must be a mapping with only the 'apps' key")
         apps = {}
-        raw = (data or {}).get("apps") or {}
+        raw = data.get("apps", {})
         if not isinstance(raw, dict):
             raise ValueError("config 'apps' must be a mapping")
         for name, entry in raw.items():
@@ -66,7 +66,7 @@ class PermissionConfig:
             if set(entry) - {"command", "category", "throwaway_profile"}:
                 raise ValueError("Unknown app config field")
             category = entry.get("category", "app")
-            if category not in ALWAYS_DENIED_CATEGORIES | {"app", "browser"}:
+            if not isinstance(category,str) or category not in ALWAYS_DENIED_CATEGORIES | {"app", "browser"}:
                 raise ValueError("Unknown app category")
             command = entry.get("command")
             if command is not None and not (isinstance(command, str) or

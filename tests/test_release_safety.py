@@ -65,11 +65,23 @@ class TestReleaseSafety(unittest.TestCase):
                 parse_test(self.write_case("  - "+fragment+"\n").read_text())
 
     def test_config_is_strict(self):
-        for data in ([],{"unknown":{}},{"apps":{"x":{"throwaway_profile":"false"}}},
+        for data in ([],{"unknown":{}},{"apps":[]},{"apps":{"x":{"category":[]}}},{"apps":{"x":{"throwaway_profile":"false"}}},
                      {"apps":{"x":{"category":"made-up"}}},{"apps":{"x":{"unknown":1}}},
                      {"apps":{"x":"shell string"}}):
             with self.subTest(data=data),self.assertRaises((ValueError,ParseError)):
                 PermissionConfig.from_dict(data)
+
+    def test_tolerance_overflow_is_parse_error(self):
+        path = self.write_case("  - {type: assert, kind: pixel-diff, screenshot: x, baseline: x.png, tolerance: "+"9"*500+"}\n")
+        with self.assertRaises(ParseError):
+            parse_test(path.read_text())
+
+    def test_progress_failure_cannot_write_pass_report(self):
+        def broken_progress(*args):
+            raise ValueError("synthetic progress error")
+        result,out = self.run_case("  - {type: launch, app: demo-app}\n",progress=broken_progress)
+        self.assertEqual(result.status,"error")
+        self.assertEqual(json.loads((out/"result.json").read_text())["status"],"error")
 
     def test_paths_cannot_escape_or_use_ntfs_streams(self):
         for value in ("../outside.png","x/../../outside.png","C:\\outside.png","\\\\server\\path","/abs","x:secret","x\\..\\y"):

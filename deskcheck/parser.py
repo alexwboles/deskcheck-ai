@@ -157,11 +157,15 @@ def parse_test(text: str, source: str = "<test>") -> dict:
                 for f in ("tolerance", "max_diff_ratio"):
                     if f in raw:
                         v = raw[f]
+                        try:
+                            number = float(v)
+                        except (ValueError,TypeError,OverflowError) as exc:
+                            raise ParseError("Assertion tolerance must be a finite number from 0 to 1") from exc
                         if isinstance(v, bool) or not isinstance(v, (int, float)) \
-                                or not (0.0 <= float(v) <= 1.0):
+                                or not (0.0 <= number <= 1.0):
                             raise ParseError(f"{where} (assert pixel-diff): '{f}' "
                                              "must be a number between 0 and 1")
-                        step[f] = float(v)
+                        step[f] = number
         parsed.append(step)
     return {"version": 1, "name": data["name"], "app": data["app"], "steps": parsed}
 
